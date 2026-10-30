@@ -1,0 +1,52 @@
+name: Cartoon Studio source checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-static-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate app shell, all 15 character loaders, and inline JavaScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s index.html
+          test -s manifest.webmanifest
+          test -s sw.js
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          html = Path('index.html').read_text()
+          ids = re.findall(r'id="(load[A-Za-z]+Library)"', html)
+          expected = {
+            'loadTysonLibrary', 'loadShadowLibrary', 'loadBrunoLibrary',
+            'loadBellaLibrary', 'loadMaryLibrary', 'loadMarthaLibrary',
+            'loadSarahLibrary', 'loadPutinLibrary', 'loadDJLibrary',
+            'loadMatthewLibrary', 'loadBernadetteLibrary', 'loadJackieLibrary',
+            'loadRichardLibrary', 'loadLorraineLibrary', 'loadWigglesLibrary'
+          }
+          if len(ids) != 15 or set(ids) != expected:
+              raise SystemExit(f'Expected exactly the 15 known character loaders; found {len(ids)}: {ids}')
+          for name in ['Tyson','Shadow','Bruno','Bella','Mary','Martha','Sarah','Putin','DJ','Matthew','Bernadette','Jackie','Richard','Lorraine','Wiggles']:
+              if name not in html:
+                  raise SystemExit(f'Missing character reference: {name}')
+          scripts = re.findall(r'<script(?:\\s[^>]*)?>(.*?)</script>', html, re.S | re.I)
+          Path('/tmp/inline-scripts.txt').write_text(str(len(scripts)))
+          for i, script in enumerate(scripts):
+              Path(f'/tmp/cartoon-inline-{i}.js').write_text(script)
+          print(f'Validated {len(ids)} character loaders and extracted {len(scripts)} inline script blocks.')
+          PY
+          count=$(cat /tmp/inline-scripts.txt)
+          for ((i=0; i<count; i++)); do node --check "/tmp/cartoon-inline-$i.js"; done
+      - name: Check static deployment configuration
+        run: grep -q 'publish = "."' netlify.toml
