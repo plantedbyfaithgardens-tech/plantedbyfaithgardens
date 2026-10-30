@@ -49,7 +49,7 @@
 <div class="hr"></div>
 <h2>Final episode export</h2><p class="sub">Combine the current Motion Engine stage with your arranged audio into one WebM video. Keep this page open while it renders.</p>
 <div class="row"><button class="primary" id="exportFullEpisode">Export video + sound</button><span id="fullExportStatus" class="sub">Ready when you are.</span></div>
-<p class="tiny">This first editor version mixes uploaded audio with the Motion Engine stage. It does not yet automatically switch between multiple saved scene layouts or synchronise mouth shapes to speech. WebM export support depends on your browser.</p>
+<p class="tiny">Episode export switches between saved scene layouts, adds short cross-fades, and mixes audio. Speech-to-mouth synchronisation is being developed separately. WebM export support depends on your browser.</p>
 </div>
 </section>
 <section id="threeD" class="view">
@@ -189,9 +189,9 @@ const video=canvas.captureStream(fps),combined=new MediaStream([...video.getVide
 const rec=new MediaRecorder(combined,{mimeType:mime}),chunks=[];rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
 rec.onstop=()=>{download('tyson-shadow-friends-episode-'+new Date().toISOString().slice(0,10)+'.webm',new Blob(chunks,{type:rec.mimeType||'video/webm'}));combined.getTracks().forEach(t=>t.stop());ctx.close();$('fullExportStatus').textContent='Finished: complete scene sequence with audio downloaded.'};
 await ctx.resume();rec.start();const start=performance.now();sources.forEach(o=>{if(o.start<total)o.src.start(ctx.currentTime+o.start)});
-let currentIndex=-1;const tick=now=>{const elapsed=(now-start)/1000;if(elapsed>=total){const last=sceneData[sceneData.length-1];engineDraw(last.seconds,last.layers,last.bg);rec.stop();return}
+let currentIndex=-1;const prevCanvas=document.createElement('canvas');prevCanvas.width=canvas.width;prevCanvas.height=canvas.height;const prevCtx=prevCanvas.getContext('2d');const fadeSeconds=.75;const tick=now=>{const elapsed=(now-start)/1000;if(elapsed>=total){const last=sceneData[sceneData.length-1];engineDraw(last.seconds,last.layers,last.bg);rec.stop();return}
 let cursor=0,index=0;for(let i=0;i<sceneData.length;i++){if(elapsed<cursor+sceneData[i].seconds){index=i;break}cursor+=sceneData[i].seconds;index=Math.min(i+1,sceneData.length-1)}
-const scene=sceneData[index];engineDraw(elapsed-cursor,scene.layers,scene.bg);$('fullExportStatus').textContent='Rendering scene '+(index+1)+' of '+sceneData.length+' · '+Math.floor(elapsed)+' / '+total+' seconds…';engineRAF=requestAnimationFrame(tick)};
+if(index!==currentIndex){if(currentIndex>=0)prevCtx.drawImage(canvas,0,0);currentIndex=index}const scene=sceneData[index],sceneTime=elapsed-cursor;engineDraw(sceneTime,scene.layers,scene.bg);if(currentIndex>0&&sceneTime<fadeSeconds){const g=canvas.getContext('2d');g.save();g.globalAlpha=1-Math.max(0,sceneTime/fadeSeconds);g.drawImage(prevCanvas,0,0);g.restore()}$('fullExportStatus').textContent='Rendering scene '+(index+1)+' of '+sceneData.length+' · '+Math.floor(elapsed)+' / '+total+' seconds…';engineRAF=requestAnimationFrame(tick)};
 engineRAF=requestAnimationFrame(tick)
 }catch(e){ctx.close();$('fullExportStatus').textContent='Export failed: '+e.message}
 }
