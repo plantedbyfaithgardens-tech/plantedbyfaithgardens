@@ -1,0 +1,19 @@
+{
+  "name": "Tyson, Shadow & Friends — Cartoon Studio",
+  "short_name": "Cartoon Studio",
+  "description": "Create and preview episodes with the Tyson, Shadow & Friends characters.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#101b18",
+  "theme_color": "#10251f",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
